@@ -4,6 +4,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import openpyxl
+import matplotlib.pyplot as plt
 
 st.title("📊 Recherche Automatisée dans l'historique des Plannings")
 
@@ -57,7 +58,6 @@ if random_title and dfs:
         intitules = df.iloc[:, 1].dropna().astype(str).tolist()  # colonne B
 
         if keyword_search:
-            # Recherche mot-clé exact
             for idx, text in enumerate(intitules):
                 if random_title.upper() in text.upper():
                     results_rows.append({
@@ -67,7 +67,6 @@ if random_title and dfs:
                         "Estimation financière": df.iloc[idx, 10]
                     })
         else:
-            # Recherche embeddings
             query_embedding = model.encode([random_title])
             embeddings_other = model.encode(intitules)
             similarity_matrix = cosine_similarity(query_embedding, embeddings_other)
@@ -111,6 +110,60 @@ if random_title and dfs:
 
         # Affichage final du tableau
         st.dataframe(st.session_state.results_df, use_container_width=True)
+
+        # ===============================
+        # CALCUL STATISTIQUE
+        # ===============================
+        df_stats = st.session_state.results_df.copy()
+
+        # Ignorer valeurs 0 pour Montant et Estimation
+        montant_nonzero = df_stats[df_stats["Montant Budgetisé"] != 0]["Montant Budgetisé"]
+        estimation_nonzero = df_stats[df_stats["Estimation financière"] != 0]["Estimation financière"]
+
+        if len(montant_nonzero) > 0 and len(estimation_nonzero) > 0:
+            st.subheader("📊 Statistiques")
+
+            # Montant Budgetisé
+            st.write("**Montant Budgetisé**")
+            st.write(f"Moyenne : {montant_nonzero.mean():.2f}")
+            st.write(f"Médiane : {montant_nonzero.median():.2f}")
+            st.write(f"Ecart-type : {montant_nonzero.std():.2f}")
+
+            # Estimation financière
+            st.write("**Estimation financière**")
+            st.write(f"Moyenne : {estimation_nonzero.mean():.2f}")
+            st.write(f"Médiane : {estimation_nonzero.median():.2f}")
+            st.write(f"Ecart-type : {estimation_nonzero.std():.2f}")
+
+            # Moyenne combinée
+            moyenne_combinee = (montant_nonzero.mean() + estimation_nonzero.mean()) / 2
+            st.write(f"**Moyenne combinée : {moyenne_combinee:.2f}**")
+
+            # ===============================
+            # HISTOGRAMMES
+            # ===============================
+            st.subheader("📊 Histogrammes")
+
+            # Histogramme 1 : Intitulé affaire vs Montant Budgetisé
+            plt.figure(figsize=(8, 4))
+            plt.bar(df_stats["Intitulé affaire"], df_stats["Montant Budgetisé"])
+            plt.xticks(rotation=90)
+            plt.ylabel("Montant Budgetisé")
+            plt.title("Intitulé affaire vs Montant Budgetisé")
+            st.pyplot(plt)
+            plt.clf()
+
+            # Histogramme 2 : Intitulé affaire vs Estimation financière
+            plt.figure(figsize=(8, 4))
+            plt.bar(df_stats["Intitulé affaire"], df_stats["Estimation financière"])
+            plt.xticks(rotation=90)
+            plt.ylabel("Estimation financière")
+            plt.title("Intitulé affaire vs Estimation financière")
+            st.pyplot(plt)
+            plt.clf()
+
+        else:
+            st.warning("⚠️ Les colonnes Montant ou Estimation financière contiennent uniquement des 0, impossible de calculer les statistiques.")
 
     else:
         st.warning("⚠️ Aucun résultat trouvé.")
