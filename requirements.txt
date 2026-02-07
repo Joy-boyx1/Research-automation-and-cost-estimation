@@ -9,3 +9,4 @@ transformers
 huggingface-hub
 sentence-transformers
 matplotlib
+seaborn
