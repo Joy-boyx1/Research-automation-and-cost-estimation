@@ -117,25 +117,45 @@ if random_title and dfs:
         montant_nonzero = df_stats[df_stats["Montant Budgetisé"] != 0]["Montant Budgetisé"]
         estimation_nonzero = df_stats[df_stats["Estimation financière"] != 0]["Estimation financière"]
 
-        if len(montant_nonzero) > 0 and len(estimation_nonzero) > 0:
-            st.subheader("📊 Statistiques")
+        st.subheader("📊 Statistiques")
+
+        # Montant Budgetisé
+        if len(montant_nonzero) > 0:
             st.write("**Montant Budgetisé**")
             st.write(f"Moyenne : {montant_nonzero.mean():.2f}")
             st.write(f"Médiane : {montant_nonzero.median():.2f}")
             st.write(f"Ecart-type : {montant_nonzero.std():.2f}")
+        else:
+            st.warning("⚠️ La colonne Montant Budgetisé contient uniquement des 0")
 
+        # Estimation financière
+        if len(estimation_nonzero) > 0:
             st.write("**Estimation financière**")
             st.write(f"Moyenne : {estimation_nonzero.mean():.2f}")
             st.write(f"Médiane : {estimation_nonzero.median():.2f}")
             st.write(f"Ecart-type : {estimation_nonzero.std():.2f}")
+        else:
+            st.warning("⚠️ La colonne Estimation financière contient uniquement des 0")
 
+        # Moyenne combinée
+        if len(montant_nonzero) > 0 and len(estimation_nonzero) > 0:
             moyenne_combinee = (montant_nonzero.mean() + estimation_nonzero.mean()) / 2
+        elif len(montant_nonzero) > 0:
+            moyenne_combinee = montant_nonzero.mean()
+        elif len(estimation_nonzero) > 0:
+            moyenne_combinee = estimation_nonzero.mean()
+        else:
+            moyenne_combinee = None
+
+        if moyenne_combinee is not None:
             st.write(f"**Moyenne combinée : {moyenne_combinee:.2f}**")
 
-            # ===============================
-            # HISTOGRAMMES
-            # ===============================
-            st.subheader("📊 Histogrammes")
+        # ===============================
+        # HISTOGRAMMES
+        # ===============================
+        st.subheader("📊 Histogrammes")
+
+        if len(montant_nonzero) > 0:
             plt.figure(figsize=(8, 4))
             plt.bar(df_stats["Intitulé affaire"], df_stats["Montant Budgetisé"])
             plt.xticks(rotation=90)
@@ -144,6 +164,7 @@ if random_title and dfs:
             st.pyplot(plt)
             plt.clf()
 
+        if len(estimation_nonzero) > 0:
             plt.figure(figsize=(8, 4))
             plt.bar(df_stats["Intitulé affaire"], df_stats["Estimation financière"])
             plt.xticks(rotation=90)
@@ -152,11 +173,12 @@ if random_title and dfs:
             st.pyplot(plt)
             plt.clf()
 
-            # ===============================
-            # DIAGRAMME DE DISTRIBUTION
-            # ===============================
-            st.subheader("📊 Diagrammes de distribution")
+        # ===============================
+        # DIAGRAMME DE DISTRIBUTION
+        # ===============================
+        st.subheader("📊 Diagrammes de distribution")
 
+        if len(montant_nonzero) > 0:
             plt.figure(figsize=(8, 4))
             sns.histplot(montant_nonzero, kde=True, bins=10, color="skyblue")
             plt.title("Distribution du Montant Budgetisé")
@@ -165,6 +187,7 @@ if random_title and dfs:
             st.pyplot(plt)
             plt.clf()
 
+        if len(estimation_nonzero) > 0:
             plt.figure(figsize=(8, 4))
             sns.histplot(estimation_nonzero, kde=True, bins=10, color="salmon")
             plt.title("Distribution de l'Estimation financière")
@@ -172,9 +195,6 @@ if random_title and dfs:
             plt.ylabel("Densité")
             st.pyplot(plt)
             plt.clf()
-
-        else:
-            st.warning("⚠️ Les colonnes Montant ou Estimation financière contiennent uniquement des 0, impossible de calculer les statistiques.")
 
     else:
         st.warning("⚠️ Aucun résultat trouvé.")
