@@ -57,6 +57,7 @@ if random_title and dfs:
 
     for name, df in dfs.items():
         intitules = df.iloc[:, 1].dropna().astype(str).tolist()  # colonne B
+        sites = df.iloc[:, 3].astype(str).tolist()  # colonne D
 
         if keyword_search:
             for idx, text in enumerate(intitules):
@@ -65,7 +66,8 @@ if random_title and dfs:
                         "Fichier": name,
                         "Intitulé affaire": df.iloc[idx, 1],
                         "Montant Budgetisé": df.iloc[idx, 9],
-                        "Estimation financière": df.iloc[idx, 10]
+                        "Estimation financière": df.iloc[idx, 10],
+                        "Site": df.iloc[idx, 3]
                     })
         else:
             query_embedding = model.encode([random_title])
@@ -78,21 +80,28 @@ if random_title and dfs:
                     "Fichier": name,
                     "Intitulé affaire": df.iloc[idx, 1],
                     "Montant Budgetisé": df.iloc[idx, 9],
-                    "Estimation financière": df.iloc[idx, 10]
+                    "Estimation financière": df.iloc[idx, 10],
+                    "Site": df.iloc[idx, 3]
                 })
 
     if results_rows:
         st.session_state.results_df = pd.DataFrame(results_rows)
+
+        # Filtrer par Site avant affichage
+        sites_dispo = st.session_state.results_df["Site"].unique().tolist()
+        site_filter = st.multiselect("Filtrer par Site :", options=sites_dispo, default=sites_dispo)
+        df_filtered = st.session_state.results_df[st.session_state.results_df["Site"].isin(site_filter)]
+
         st.subheader("📊 Affaires trouvées (cochez pour supprimer)")
 
-        df_display = st.session_state.results_df.copy()
+        df_display = df_filtered.copy()
         to_delete_indices = []
 
         # Affichage ligne par ligne avec checkbox
         for i in range(len(df_display)):
             row = df_display.iloc[i]
             checked = st.checkbox(
-                f"{row['Intitulé affaire']} | {row['Montant Budgetisé']} | {row['Estimation financière']} | {row['Fichier']}",
+                f"{row['Intitulé affaire']} | {row['Montant Budgetisé']} | {row['Estimation financière']} | {row['Site']} | {row['Fichier']}",
                 key=f"chk_{i}"
             )
             if checked:
@@ -107,13 +116,13 @@ if random_title and dfs:
             else:
                 st.warning("⚠️ Aucune ligne cochée à supprimer")
 
-        # Affichage final du tableau
-        st.dataframe(st.session_state.results_df, use_container_width=True)
+        # Affichage final du tableau filtré
+        st.dataframe(st.session_state.results_df[st.session_state.results_df["Site"].isin(site_filter)], use_container_width=True)
 
         # ===============================
         # STATISTIQUES ET DISTRIBUTIONS
         # ===============================
-        df_stats = st.session_state.results_df.copy()
+        df_stats = st.session_state.results_df[st.session_state.results_df["Site"].isin(site_filter)].copy()
         montant_nonzero = df_stats[df_stats["Montant Budgetisé"] != 0]["Montant Budgetisé"]
         estimation_nonzero = df_stats[df_stats["Estimation financière"] != 0]["Estimation financière"]
 
