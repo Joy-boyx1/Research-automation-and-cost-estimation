@@ -147,6 +147,7 @@ if random_title and dfs:
             st.write(f"Médiane : {estimation_nonzero.median():.2f}")
             st.write(f"Ecart-type : {estimation_nonzero.std():.2f}")
 
+        # Moyenne combinée
         if len(montant_nonzero) > 0 and len(estimation_nonzero) > 0:
             moyenne_combinee = (montant_nonzero.mean() + estimation_nonzero.mean()) / 2
         elif len(montant_nonzero) > 0:
@@ -159,9 +160,9 @@ if random_title and dfs:
             st.write(f"**Moyenne combinée : {moyenne_combinee:.2f}**")
 
         # ===============================
-        # HISTOGRAMMES & DISTRIBUTIONS
+        # HISTOGRAMMES
         # ===============================
-        st.subheader("📊 Histogrammes et distributions")
+        st.subheader("📊 Histogrammes")
 
         if len(montant_nonzero) > 0:
             plt.figure(figsize=(8, 4))
@@ -169,14 +170,6 @@ if random_title and dfs:
             plt.xticks(rotation=90)
             plt.ylabel("Montant Budgetisé")
             plt.title("Intitulé affaire vs Montant Budgetisé")
-            st.pyplot(plt)
-            plt.clf()
-
-            plt.figure(figsize=(8, 4))
-            sns.histplot(montant_nonzero, kde=True, bins=10, color="skyblue")
-            plt.title("Distribution du Montant Budgetisé")
-            plt.xlabel("Montant Budgetisé")
-            plt.ylabel("Densité")
             st.pyplot(plt)
             plt.clf()
 
@@ -189,6 +182,21 @@ if random_title and dfs:
             st.pyplot(plt)
             plt.clf()
 
+        # ===============================
+        # DIAGRAMME DE DISTRIBUTION
+        # ===============================
+        st.subheader("📊 Diagrammes de distribution")
+
+        if len(montant_nonzero) > 0:
+            plt.figure(figsize=(8, 4))
+            sns.histplot(montant_nonzero, kde=True, bins=10, color="skyblue")
+            plt.title("Distribution du Montant Budgetisé")
+            plt.xlabel("Montant Budgetisé")
+            plt.ylabel("Densité")
+            st.pyplot(plt)
+            plt.clf()
+
+        if len(estimation_nonzero) > 0:
             plt.figure(figsize=(8, 4))
             sns.histplot(estimation_nonzero, kde=True, bins=10, color="salmon")
             plt.title("Distribution de l'Estimation financière")
@@ -202,8 +210,8 @@ if random_title and dfs:
         # ===============================
         st.subheader("🤖 Clustering automatique")
 
-        # On ne conserve que les lignes où Estimation financière != 0 pour le clustering
-        df_ml = df_stats[df_stats["Estimation financière"] != 0].copy()
+        df_ml = df_stats.copy()
+        df_ml = df_ml[(df_ml["Montant Budgetisé"] != 0) | (df_ml["Estimation financière"] != 0)]
         if not df_ml.empty:
             text_embeddings = model.encode(df_ml["Intitulé affaire"].tolist())
             numeric_data = df_ml[["Montant Budgetisé", "Estimation financière"]].fillna(0).values
@@ -216,7 +224,9 @@ if random_title and dfs:
 
             st.dataframe(df_ml[["Intitulé affaire","Montant Budgetisé","Estimation financière","Site","Cluster"]])
 
+            # ----------------------------
             # Diagramme interactif du clustering
+            # ----------------------------
             pca = PCA(n_components=2)
             reduced_features = pca.fit_transform(features)
             df_ml['PCA1'] = reduced_features[:,0]
