@@ -55,7 +55,7 @@ if random_title and dfs:
         if intitule_list:
             embeddings_other = model.encode(intitule_list)
             similarity_matrix = cosine_similarity(random_title_embedding, embeddings_other)
-            high_sim_indices = np.where(similarity_matrix[0] > 0.7)[0]
+            high_sim_indices = np.where(similarity_matrix[0] > 0.9)[0]
 
             for idx in high_sim_indices:
                 results_rows.append({
