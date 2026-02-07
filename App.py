@@ -12,14 +12,14 @@ expected_files = [
     f"Consultation du planning des af {year}.xlsx" for year in range(2015, 2025)
 ]
 
-# 🔁 Chargement du modèle
+# Chargement du modèle
 @st.cache_resource
 def load_model():
     return SentenceTransformer('sentence-transformers/paraphrase-multilingual-mpnet-base-v2')
 
 model = load_model()
 
-# Upload des fichiers
+# Upload des fichiers Excel
 uploaded_files = st.file_uploader(
     "📂 Importez vos fichiers Excel",
     type=["xlsx"],
@@ -59,6 +59,7 @@ if random_title and dfs:
         intitules = df.iloc[:, 1].dropna().astype(str).tolist()  # colonne B
 
         if keyword_search:
+            # Recherche mot-clé exact
             for idx, text in enumerate(intitules):
                 if random_title.upper() in text.upper():
                     results_rows.append({
@@ -68,10 +69,11 @@ if random_title and dfs:
                         "Estimation financière": df.iloc[idx, 10]
                     })
         else:
+            # Recherche embeddings
             query_embedding = model.encode([random_title])
             embeddings_other = model.encode(intitules)
             similarity_matrix = cosine_similarity(query_embedding, embeddings_other)
-            high_sim_indices = np.where(similarity_matrix[0] > 0.7)[0]
+            high_sim_indices = np.where(similarity_matrix[0] > 0.9)[0]
 
             for idx in high_sim_indices:
                 results_rows.append({
@@ -83,27 +85,34 @@ if random_title and dfs:
 
     if results_rows:
         # Stocker dans session_state pour suppression
-        st.session_state.results_df = pd.DataFrame(results_rows)
+        if 'results_df' not in st.session_state:
+            st.session_state.results_df = pd.DataFrame(results_rows)
+        else:
+            st.session_state.results_df = pd.DataFrame(results_rows)
 
-        st.subheader("📊 Affaires trouvées (supprimez avec 🗑️)")
+        st.subheader("📊 Affaires trouvées (cochez pour supprimer)")
 
-        df_display = st.session_state.results_df
-        to_delete = None  # variable pour stocker l'index à supprimer
+        df_display = st.session_state.results_df.copy()
 
-        # Affichage tableau avec boutons corbeille
+        # Ajouter une colonne checkbox
+        df_display['Supprimer'] = False
         for i in range(len(df_display)):
-            row = df_display.iloc[i]
-            cols = st.columns([4, 2, 2, 2, 1])
-            cols[0].write(row["Intitulé affaire"])
-            cols[1].write(row["Montant Budgetisé"])
-            cols[2].write(row["Estimation financière"])
-            cols[3].write(row["Fichier"])
-            if cols[4].button("🗑️", key=f"del_{i}"):
-                to_delete = df_display.index[i]  # ne supprime pas encore
+            df_display.at[i, 'Supprimer'] = st.checkbox(
+                f"{df_display.iloc[i]['Intitulé affaire']} | {df_display.iloc[i]['Montant Budgetisé']} | {df_display.iloc[i]['Estimation financière']} | {df_display.iloc[i]['Fichier']}",
+                key=f"chk_{i}"
+            )
 
-        # Supprimer la ligne après la boucle
-        if to_delete is not None:
-            st.session_state.results_df = st.session_state.results_df.drop(to_delete).reset_index(drop=True)
-            st.experimental_rerun()  # reload après suppression
+        # Bouton global pour supprimer toutes les lignes cochées
+        if st.button("🗑️ Supprimer la sélection"):
+            # Supprimer toutes les lignes où 'Supprimer' est True
+            st.session_state.results_df = st.session_state.results_df[
+                [not st.session_state.results_df.index[i] in df_display[df_display['Supprimer']].index for i in range(len(df_display))]
+            ].reset_index(drop=True)
+            st.success("✅ Lignes supprimées")
+            st.experimental_rerun()
+
+        # Affichage final du tableau
+        st.dataframe(st.session_state.results_df, use_container_width=True)
+
     else:
         st.warning("⚠️ Aucun résultat trouvé.")
