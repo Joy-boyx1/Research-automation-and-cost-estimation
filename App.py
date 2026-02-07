@@ -59,7 +59,6 @@ if random_title and dfs:
         intitules = df.iloc[:, 1].dropna().astype(str).tolist()  # colonne B
 
         if keyword_search:
-            # Recherche mot-clé exact
             for idx, text in enumerate(intitules):
                 if random_title.upper() in text.upper():
                     results_rows.append({
@@ -69,7 +68,6 @@ if random_title and dfs:
                         "Estimation financière": df.iloc[idx, 10]
                     })
         else:
-            # Recherche embeddings
             query_embedding = model.encode([random_title])
             embeddings_other = model.encode(intitules)
             similarity_matrix = cosine_similarity(query_embedding, embeddings_other)
@@ -85,15 +83,14 @@ if random_title and dfs:
 
     if results_rows:
         # Stocker dans session_state pour suppression
-        if 'results_df' not in st.session_state:
-            st.session_state.results_df = pd.DataFrame(results_rows)
-        else:
-            st.session_state.results_df = pd.DataFrame(results_rows)
+        st.session_state.results_df = pd.DataFrame(results_rows)
 
         st.subheader("📊 Affaires trouvées (supprimez avec 🗑️)")
 
-        # Affichage tableau avec bouton corbeille par ligne
         df_display = st.session_state.results_df
+        to_delete = None  # variable pour stocker l'index à supprimer
+
+        # Affichage tableau avec boutons corbeille
         for i in range(len(df_display)):
             row = df_display.iloc[i]
             cols = st.columns([4, 2, 2, 2, 1])
@@ -102,7 +99,11 @@ if random_title and dfs:
             cols[2].write(row["Estimation financière"])
             cols[3].write(row["Fichier"])
             if cols[4].button("🗑️", key=f"del_{i}"):
-                st.session_state.results_df = st.session_state.results_df.drop(df_display.index[i]).reset_index(drop=True)
-                st.experimental_rerun()  # recharge la page pour mettre à jour le tableau
+                to_delete = df_display.index[i]  # ne supprime pas encore
+
+        # Supprimer la ligne après la boucle
+        if to_delete is not None:
+            st.session_state.results_df = st.session_state.results_df.drop(to_delete).reset_index(drop=True)
+            st.experimental_rerun()  # reload après suppression
     else:
         st.warning("⚠️ Aucun résultat trouvé.")
