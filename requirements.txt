@@ -10,3 +10,4 @@ huggingface-hub
 sentence-transformers
 matplotlib
 seaborn
+plotly
