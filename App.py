@@ -3,16 +3,18 @@ import pandas as pd
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
 import openpyxl
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-st.title("📊 Recherche Automatisée dans l'historique des Plannings")
+st.title("📊 Recherche Automatisée et Clustering des Plannings")
 
 # Liste des fichiers attendus
 expected_files = [f"Consultation du planning des af {year}.xlsx" for year in range(2015, 2025)]
 
-# Chargement du modèle
+# Chargement du modèle SentenceTransformer
 @st.cache_resource
 def load_model():
     return SentenceTransformer('sentence-transformers/paraphrase-multilingual-mpnet-base-v2')
@@ -87,13 +89,12 @@ if random_title and dfs:
     if results_rows:
         st.session_state.results_df = pd.DataFrame(results_rows)
 
-        # Filtrer par Site avant affichage
+        # Filtrer par Site
         sites_dispo = st.session_state.results_df["Site"].unique().tolist()
         site_filter = st.multiselect("Filtrer par Site :", options=sites_dispo, default=sites_dispo)
         df_filtered = st.session_state.results_df[st.session_state.results_df["Site"].isin(site_filter)]
 
         st.subheader("📊 Affaires trouvées (cochez pour supprimer)")
-
         df_display = df_filtered.copy()
         to_delete_indices = []
 
@@ -120,31 +121,23 @@ if random_title and dfs:
         st.dataframe(st.session_state.results_df[st.session_state.results_df["Site"].isin(site_filter)], use_container_width=True)
 
         # ===============================
-        # STATISTIQUES ET DISTRIBUTIONS
+        # STATISTIQUES
         # ===============================
         df_stats = st.session_state.results_df[st.session_state.results_df["Site"].isin(site_filter)].copy()
         montant_nonzero = df_stats[df_stats["Montant Budgetisé"] != 0]["Montant Budgetisé"]
         estimation_nonzero = df_stats[df_stats["Estimation financière"] != 0]["Estimation financière"]
 
         st.subheader("📊 Statistiques")
-
-        # Montant Budgetisé
         if len(montant_nonzero) > 0:
             st.write("**Montant Budgetisé**")
             st.write(f"Moyenne : {montant_nonzero.mean():.2f}")
             st.write(f"Médiane : {montant_nonzero.median():.2f}")
             st.write(f"Ecart-type : {montant_nonzero.std():.2f}")
-        else:
-            st.warning("⚠️ La colonne Montant Budgetisé contient uniquement des 0")
-
-        # Estimation financière
         if len(estimation_nonzero) > 0:
             st.write("**Estimation financière**")
             st.write(f"Moyenne : {estimation_nonzero.mean():.2f}")
             st.write(f"Médiane : {estimation_nonzero.median():.2f}")
             st.write(f"Ecart-type : {estimation_nonzero.std():.2f}")
-        else:
-            st.warning("⚠️ La colonne Estimation financière contient uniquement des 0")
 
         # Moyenne combinée
         if len(montant_nonzero) > 0 and len(estimation_nonzero) > 0:
@@ -155,17 +148,15 @@ if random_title and dfs:
             moyenne_combinee = estimation_nonzero.mean()
         else:
             moyenne_combinee = None
-
         if moyenne_combinee is not None:
             st.write(f"**Moyenne combinée : {moyenne_combinee:.2f}**")
 
         # ===============================
-        # HISTOGRAMMES
+        # HISTOGRAMMES ET DISTRIBUTIONS
         # ===============================
-        st.subheader("📊 Histogrammes")
-
+        st.subheader("📊 Histogrammes et distributions")
         if len(montant_nonzero) > 0:
-            plt.figure(figsize=(8, 4))
+            plt.figure(figsize=(8,4))
             plt.bar(df_stats["Intitulé affaire"], df_stats["Montant Budgetisé"])
             plt.xticks(rotation=90)
             plt.ylabel("Montant Budgetisé")
@@ -174,7 +165,7 @@ if random_title and dfs:
             plt.clf()
 
         if len(estimation_nonzero) > 0:
-            plt.figure(figsize=(8, 4))
+            plt.figure(figsize=(8,4))
             plt.bar(df_stats["Intitulé affaire"], df_stats["Estimation financière"])
             plt.xticks(rotation=90)
             plt.ylabel("Estimation financière")
@@ -182,28 +173,36 @@ if random_title and dfs:
             st.pyplot(plt)
             plt.clf()
 
-        # ===============================
-        # DIAGRAMME DE DISTRIBUTION
-        # ===============================
-        st.subheader("📊 Diagrammes de distribution")
-
         if len(montant_nonzero) > 0:
-            plt.figure(figsize=(8, 4))
+            plt.figure(figsize=(8,4))
             sns.histplot(montant_nonzero, kde=True, bins=10, color="skyblue")
             plt.title("Distribution du Montant Budgetisé")
-            plt.xlabel("Montant Budgetisé")
-            plt.ylabel("Densité")
             st.pyplot(plt)
             plt.clf()
 
         if len(estimation_nonzero) > 0:
-            plt.figure(figsize=(8, 4))
+            plt.figure(figsize=(8,4))
             sns.histplot(estimation_nonzero, kde=True, bins=10, color="salmon")
             plt.title("Distribution de l'Estimation financière")
-            plt.xlabel("Estimation financière")
-            plt.ylabel("Densité")
             st.pyplot(plt)
             plt.clf()
 
+        # ===============================
+        # CLUSTERING AUTOMATIQUE
+        # ===============================
+        st.subheader("🤖 Clustering automatique")
+
+        df_ml = df_stats.copy()
+        df_ml = df_ml[(df_ml["Montant Budgetisé"] != 0) | (df_ml["Estimation financière"] != 0)]
+        if not df_ml.empty:
+            text_embeddings = model.encode(df_ml["Intitulé affaire"].tolist())
+            numeric_data = df_ml[["Montant Budgetisé", "Estimation financière"]].fillna(0).values
+            numeric_scaled = StandardScaler().fit_transform(numeric_data)
+            features = np.hstack([text_embeddings, numeric_scaled])
+
+            n_clusters = st.slider("Nombre de clusters :", min_value=2, max_value=10, value=3)
+            kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+            df_ml['Cluster'] = kmeans.fit_predict(features)
+            st.dataframe(df_ml[["Intitulé affaire","Montant Budgetisé","Estimation financière","Site","Cluster"]])
     else:
         st.warning("⚠️ Aucun résultat trouvé.")
