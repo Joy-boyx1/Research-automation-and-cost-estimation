@@ -5,9 +5,11 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
 import openpyxl
 import matplotlib.pyplot as plt
 import seaborn as sns
+import plotly.express as px
 
 st.title("📊 Recherche Automatisée et Clustering des Plannings")
 
@@ -152,42 +154,6 @@ if random_title and dfs:
             st.write(f"**Moyenne combinée : {moyenne_combinee:.2f}**")
 
         # ===============================
-        # HISTOGRAMMES ET DISTRIBUTIONS
-        # ===============================
-        st.subheader("📊 Histogrammes et distributions")
-        if len(montant_nonzero) > 0:
-            plt.figure(figsize=(8,4))
-            plt.bar(df_stats["Intitulé affaire"], df_stats["Montant Budgetisé"])
-            plt.xticks(rotation=90)
-            plt.ylabel("Montant Budgetisé")
-            plt.title("Intitulé affaire vs Montant Budgetisé")
-            st.pyplot(plt)
-            plt.clf()
-
-        if len(estimation_nonzero) > 0:
-            plt.figure(figsize=(8,4))
-            plt.bar(df_stats["Intitulé affaire"], df_stats["Estimation financière"])
-            plt.xticks(rotation=90)
-            plt.ylabel("Estimation financière")
-            plt.title("Intitulé affaire vs Estimation financière")
-            st.pyplot(plt)
-            plt.clf()
-
-        if len(montant_nonzero) > 0:
-            plt.figure(figsize=(8,4))
-            sns.histplot(montant_nonzero, kde=True, bins=10, color="skyblue")
-            plt.title("Distribution du Montant Budgetisé")
-            st.pyplot(plt)
-            plt.clf()
-
-        if len(estimation_nonzero) > 0:
-            plt.figure(figsize=(8,4))
-            sns.histplot(estimation_nonzero, kde=True, bins=10, color="salmon")
-            plt.title("Distribution de l'Estimation financière")
-            st.pyplot(plt)
-            plt.clf()
-
-        # ===============================
         # CLUSTERING AUTOMATIQUE
         # ===============================
         st.subheader("🤖 Clustering automatique")
@@ -203,6 +169,26 @@ if random_title and dfs:
             n_clusters = st.slider("Nombre de clusters :", min_value=2, max_value=10, value=3)
             kmeans = KMeans(n_clusters=n_clusters, random_state=42)
             df_ml['Cluster'] = kmeans.fit_predict(features)
+
             st.dataframe(df_ml[["Intitulé affaire","Montant Budgetisé","Estimation financière","Site","Cluster"]])
+
+            # ----------------------------
+            # Diagramme interactif du clustering
+            # ----------------------------
+            pca = PCA(n_components=2)
+            reduced_features = pca.fit_transform(features)
+            df_ml['PCA1'] = reduced_features[:,0]
+            df_ml['PCA2'] = reduced_features[:,1]
+
+            fig = px.scatter(
+                df_ml,
+                x='PCA1',
+                y='PCA2',
+                color='Cluster',
+                hover_data=['Intitulé affaire','Montant Budgetisé','Estimation financière','Site'],
+                title="Diagramme du clustering (PCA 2D)"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
     else:
         st.warning("⚠️ Aucun résultat trouvé.")
