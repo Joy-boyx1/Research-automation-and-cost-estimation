@@ -16,7 +16,7 @@ st.title("📊 Recherche Automatisée et Clustering des Plannings")
 # Liste des fichiers attendus
 expected_files = [f"Consultation du planning des af {year}.xlsx" for year in range(2015, 2025)]
 
-# Chargement du modèle SentenceTransformer
+# Chargement du modèle
 @st.cache_resource
 def load_model():
     return SentenceTransformer('sentence-transformers/paraphrase-multilingual-mpnet-base-v2')
@@ -91,16 +91,20 @@ if random_title and dfs:
     if results_rows:
         st.session_state.results_df = pd.DataFrame(results_rows)
 
-        # Filtrer par Site
+        # -------------------
+        # Filtre par Site
+        # -------------------
         sites_dispo = st.session_state.results_df["Site"].unique().tolist()
         site_filter = st.multiselect("Filtrer par Site :", options=sites_dispo, default=sites_dispo)
         df_filtered = st.session_state.results_df[st.session_state.results_df["Site"].isin(site_filter)]
 
+        # -------------------
+        # Suppression par checkbox
+        # -------------------
         st.subheader("📊 Affaires trouvées (cochez pour supprimer)")
         df_display = df_filtered.copy()
         to_delete_indices = []
 
-        # Affichage ligne par ligne avec checkbox
         for i in range(len(df_display)):
             row = df_display.iloc[i]
             checked = st.checkbox(
@@ -110,7 +114,6 @@ if random_title and dfs:
             if checked:
                 to_delete_indices.append(df_display.index[i])
 
-        # Bouton global pour supprimer toutes les lignes cochées
         if st.button("🗑️ Supprimer la sélection"):
             if to_delete_indices:
                 st.session_state.results_df.drop(index=to_delete_indices, inplace=True)
@@ -119,13 +122,16 @@ if random_title and dfs:
             else:
                 st.warning("⚠️ Aucune ligne cochée à supprimer")
 
-        # Affichage final du tableau filtré
-        st.dataframe(st.session_state.results_df[st.session_state.results_df["Site"].isin(site_filter)], use_container_width=True)
+        # -------------------
+        # Tableau final
+        # -------------------
+        df_final = st.session_state.results_df[st.session_state.results_df["Site"].isin(site_filter)]
+        st.dataframe(df_final, use_container_width=True)
 
         # ===============================
         # STATISTIQUES
         # ===============================
-        df_stats = st.session_state.results_df[st.session_state.results_df["Site"].isin(site_filter)].copy()
+        df_stats = df_final.copy()
         montant_nonzero = df_stats[df_stats["Montant Budgetisé"] != 0]["Montant Budgetisé"]
         estimation_nonzero = df_stats[df_stats["Estimation financière"] != 0]["Estimation financière"]
 
@@ -152,6 +158,52 @@ if random_title and dfs:
             moyenne_combinee = None
         if moyenne_combinee is not None:
             st.write(f"**Moyenne combinée : {moyenne_combinee:.2f}**")
+
+        # ===============================
+        # HISTOGRAMMES
+        # ===============================
+        st.subheader("📊 Histogrammes")
+
+        if len(montant_nonzero) > 0:
+            plt.figure(figsize=(8, 4))
+            plt.bar(df_stats["Intitulé affaire"], df_stats["Montant Budgetisé"])
+            plt.xticks(rotation=90)
+            plt.ylabel("Montant Budgetisé")
+            plt.title("Intitulé affaire vs Montant Budgetisé")
+            st.pyplot(plt)
+            plt.clf()
+
+        if len(estimation_nonzero) > 0:
+            plt.figure(figsize=(8, 4))
+            plt.bar(df_stats["Intitulé affaire"], df_stats["Estimation financière"])
+            plt.xticks(rotation=90)
+            plt.ylabel("Estimation financière")
+            plt.title("Intitulé affaire vs Estimation financière")
+            st.pyplot(plt)
+            plt.clf()
+
+        # ===============================
+        # DIAGRAMME DE DISTRIBUTION
+        # ===============================
+        st.subheader("📊 Diagrammes de distribution")
+
+        if len(montant_nonzero) > 0:
+            plt.figure(figsize=(8, 4))
+            sns.histplot(montant_nonzero, kde=True, bins=10, color="skyblue")
+            plt.title("Distribution du Montant Budgetisé")
+            plt.xlabel("Montant Budgetisé")
+            plt.ylabel("Densité")
+            st.pyplot(plt)
+            plt.clf()
+
+        if len(estimation_nonzero) > 0:
+            plt.figure(figsize=(8, 4))
+            sns.histplot(estimation_nonzero, kde=True, bins=10, color="salmon")
+            plt.title("Distribution de l'Estimation financière")
+            plt.xlabel("Estimation financière")
+            plt.ylabel("Densité")
+            st.pyplot(plt)
+            plt.clf()
 
         # ===============================
         # CLUSTERING AUTOMATIQUE
