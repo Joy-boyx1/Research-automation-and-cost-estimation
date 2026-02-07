@@ -5,6 +5,7 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import openpyxl
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 st.title("📊 Recherche Automatisée dans l'historique des Plannings")
 
@@ -81,9 +82,7 @@ if random_title and dfs:
                 })
 
     if results_rows:
-        # Stocker dans session_state
         st.session_state.results_df = pd.DataFrame(results_rows)
-
         st.subheader("📊 Affaires trouvées (cochez pour supprimer)")
 
         df_display = st.session_state.results_df.copy()
@@ -112,30 +111,24 @@ if random_title and dfs:
         st.dataframe(st.session_state.results_df, use_container_width=True)
 
         # ===============================
-        # CALCUL STATISTIQUE
+        # STATISTIQUES ET DISTRIBUTIONS
         # ===============================
         df_stats = st.session_state.results_df.copy()
-
-        # Ignorer valeurs 0 pour Montant et Estimation
         montant_nonzero = df_stats[df_stats["Montant Budgetisé"] != 0]["Montant Budgetisé"]
         estimation_nonzero = df_stats[df_stats["Estimation financière"] != 0]["Estimation financière"]
 
         if len(montant_nonzero) > 0 and len(estimation_nonzero) > 0:
             st.subheader("📊 Statistiques")
-
-            # Montant Budgetisé
             st.write("**Montant Budgetisé**")
             st.write(f"Moyenne : {montant_nonzero.mean():.2f}")
             st.write(f"Médiane : {montant_nonzero.median():.2f}")
             st.write(f"Ecart-type : {montant_nonzero.std():.2f}")
 
-            # Estimation financière
             st.write("**Estimation financière**")
             st.write(f"Moyenne : {estimation_nonzero.mean():.2f}")
             st.write(f"Médiane : {estimation_nonzero.median():.2f}")
             st.write(f"Ecart-type : {estimation_nonzero.std():.2f}")
 
-            # Moyenne combinée
             moyenne_combinee = (montant_nonzero.mean() + estimation_nonzero.mean()) / 2
             st.write(f"**Moyenne combinée : {moyenne_combinee:.2f}**")
 
@@ -143,8 +136,6 @@ if random_title and dfs:
             # HISTOGRAMMES
             # ===============================
             st.subheader("📊 Histogrammes")
-
-            # Histogramme 1 : Intitulé affaire vs Montant Budgetisé
             plt.figure(figsize=(8, 4))
             plt.bar(df_stats["Intitulé affaire"], df_stats["Montant Budgetisé"])
             plt.xticks(rotation=90)
@@ -153,12 +144,32 @@ if random_title and dfs:
             st.pyplot(plt)
             plt.clf()
 
-            # Histogramme 2 : Intitulé affaire vs Estimation financière
             plt.figure(figsize=(8, 4))
             plt.bar(df_stats["Intitulé affaire"], df_stats["Estimation financière"])
             plt.xticks(rotation=90)
             plt.ylabel("Estimation financière")
             plt.title("Intitulé affaire vs Estimation financière")
+            st.pyplot(plt)
+            plt.clf()
+
+            # ===============================
+            # DIAGRAMME DE DISTRIBUTION
+            # ===============================
+            st.subheader("📊 Diagrammes de distribution")
+
+            plt.figure(figsize=(8, 4))
+            sns.histplot(montant_nonzero, kde=True, bins=10, color="skyblue")
+            plt.title("Distribution du Montant Budgetisé")
+            plt.xlabel("Montant Budgetisé")
+            plt.ylabel("Densité")
+            st.pyplot(plt)
+            plt.clf()
+
+            plt.figure(figsize=(8, 4))
+            sns.histplot(estimation_nonzero, kde=True, bins=10, color="salmon")
+            plt.title("Distribution de l'Estimation financière")
+            plt.xlabel("Estimation financière")
+            plt.ylabel("Densité")
             st.pyplot(plt)
             plt.clf()
 
