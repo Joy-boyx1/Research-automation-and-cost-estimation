@@ -64,9 +64,9 @@ if random_title and dfs:
                 if random_title.upper() in text.upper():  # ignore casse
                     results_rows.append({
                         "Fichier": name,
-                        "Intitulé affaire": df.iloc[idx, 1],   # colonne B
-                        "Montant Budgetisé": df.iloc[idx, 9],  # colonne J
-                        "Estimation financière": df.iloc[idx, 10]  # colonne K
+                        "Intitulé affaire": df.iloc[idx, 1],
+                        "Montant Budgetisé": df.iloc[idx, 9],
+                        "Estimation financière": df.iloc[idx, 10]
                     })
         else:
             # 🔹 Recherche embeddings classique
@@ -78,14 +78,30 @@ if random_title and dfs:
             for idx in high_sim_indices:
                 results_rows.append({
                     "Fichier": name,
-                    "Intitulé affaire": df.iloc[idx, 1],   # colonne B
-                    "Montant Budgetisé": df.iloc[idx, 9],  # colonne J
-                    "Estimation financière": df.iloc[idx, 10]  # colonne K
+                    "Intitulé affaire": df.iloc[idx, 1],
+                    "Montant Budgetisé": df.iloc[idx, 9],
+                    "Estimation financière": df.iloc[idx, 10]
                 })
 
     if results_rows:
-        results_df = pd.DataFrame(results_rows)
-        st.subheader("📊 Affaires trouvées")
-        st.dataframe(results_df, use_container_width=True)
+        # Stocker le tableau dans session_state pour suppression manuelle
+        if 'results_df' not in st.session_state:
+            st.session_state.results_df = pd.DataFrame(results_rows)
+        else:
+            st.session_state.results_df = pd.DataFrame(results_rows)
+
+        st.subheader("📊 Affaires trouvées (cliquer sur 🗑️ pour supprimer)")
+
+        # Affichage du tableau avec icône corbeille pour suppression
+        df_display = st.session_state.results_df
+        for i in range(len(df_display)):
+            cols = st.columns([4, 2, 2, 2, 1])
+            cols[0].write(df_display.iloc[i]["Intitulé affaire"])
+            cols[1].write(df_display.iloc[i]["Montant Budgetisé"])
+            cols[2].write(df_display.iloc[i]["Estimation financière"])
+            cols[3].write(df_display.iloc[i]["Fichier"])
+            if cols[4].button("🗑️", key=f"del_{i}"):
+                st.session_state.results_df = st.session_state.results_df.drop(df_display.index[i]).reset_index(drop=True)
+                st.experimental_rerun()  # recharge la page pour mettre à jour le tableau
     else:
         st.warning("⚠️ Aucun résultat trouvé.")
