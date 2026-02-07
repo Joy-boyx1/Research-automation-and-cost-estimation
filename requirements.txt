@@ -7,3 +7,5 @@ scikit-learn
 torch
 transformers
 huggingface-hub
+sentence-transformers
+matplotlib
